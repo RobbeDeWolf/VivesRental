@@ -1,4 +1,5 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using Vives.Services.Model;
 using VivesRental.Repository.Core;
 using VivesRental.Services.Abstractions;
 using VivesRental.Services.Extensions;
@@ -33,7 +34,7 @@ public class OrderLineService : IOrderLineService
             .ToListAsync();
     }
 
-    public async Task<bool> RentAsync(Guid orderId, Guid articleId)
+    public async Task<ServiceResult> RentAsync(Guid orderId, Guid articleId)
     {
         var fromDateTime = DateTime.Now;
         var articleFilter = new ArticleFilter
@@ -49,7 +50,14 @@ public class OrderLineService : IOrderLineService
         if (article == null)
         {
             //Article does not exist or is not available.
-            return false;
+            var serviceResult = new ServiceResult();
+            serviceResult.Messages.Add(new ServiceMessage
+            {
+                Code = "ArticleNotExists",
+                Message = "The article does not exist",
+                Type = ServiceMessageType.Error
+            });
+            return serviceResult;
         }
 
         var orderLine = article.CreateOrderLine(orderId);
@@ -57,10 +65,10 @@ public class OrderLineService : IOrderLineService
         _context.OrderLines.Add(orderLine);
         await _context.SaveChangesAsync();
 
-        return true;
+        return new ServiceResult();
     }
 
-    public async Task<bool> RentAsync(Guid orderId, IList<Guid> articleIds)
+    public async Task<ServiceResult> RentAsync(Guid orderId, IList<Guid> articleIds)
     {
         var articleFilter = new ArticleFilter
         {
@@ -76,7 +84,14 @@ public class OrderLineService : IOrderLineService
         //If the amount of articles is not the same as the requested ids, some articles are not available anymore
         if (articleIds.Count != articles.Count)
         {
-            return false;
+            var serviceResult = new ServiceResult();
+            serviceResult.Messages.Add(new ServiceMessage
+            {
+                Code = "SomeArticlesNotAvailable",
+                Message = "Some articles are not available anymore",
+                Type = ServiceMessageType.Error
+            });
+            return serviceResult;
         }
 
         foreach (var article in articles)
@@ -86,7 +101,19 @@ public class OrderLineService : IOrderLineService
         }
 
         var numberOfObjectsUpdated = await _context.SaveChangesAsync();
-        return numberOfObjectsUpdated > 0;
+        if (numberOfObjectsUpdated is 0)
+        {
+            var serviceResult = new ServiceResult();
+            serviceResult.Messages.Add(new ServiceMessage
+            {
+                Code = "Nochanges",
+                Message = "No changes happened in database",
+                Type = ServiceMessageType.Error
+            });
+            return serviceResult;
+        }
+
+        return new ServiceResult();
     }
 
     /// <summary>
@@ -95,7 +122,7 @@ public class OrderLineService : IOrderLineService
     /// <param name="orderLineId"></param>
     /// <param name="returnedAt"></param>
     /// <returns></returns>
-    public async Task<bool> ReturnAsync(Guid orderLineId, DateTime returnedAt)
+    public async Task<ServiceResult> ReturnAsync(Guid orderLineId, DateTime returnedAt)
     {
         var orderLine = await _context.OrderLines
             .Where(ol => ol.Id == orderLineId)
@@ -103,22 +130,43 @@ public class OrderLineService : IOrderLineService
 
         if (orderLine == null)
         {
-            return false;
+            var serviceResult = new ServiceResult();
+            serviceResult.Messages.Add(new ServiceMessage
+            {
+                Code = "orderline is null",
+                Message = "orderline doesnt exist",
+                Type = ServiceMessageType.Error
+            });
+            return serviceResult;
         }
 
         if (returnedAt == DateTime.MinValue)
         {
-            return false;
+            var serviceResult = new ServiceResult();
+            serviceResult.Messages.Add(new ServiceMessage
+            {
+                Code = "Date invalid",
+                Message = "returned at date invalid",
+                Type = ServiceMessageType.Error
+            });
+            return serviceResult;
         }
 
         if (orderLine.ReturnedAt.HasValue)
         {
-            return false;
+            var serviceResult = new ServiceResult();
+            serviceResult.Messages.Add(new ServiceMessage
+            {
+                Code = "Date is empty",
+                Message = "Returned at date is empty",
+                Type = ServiceMessageType.Error
+            });
+            return serviceResult;
         }
 
         orderLine.ReturnedAt = returnedAt;
 
         await _context.SaveChangesAsync();
-        return true;
+        return new ServiceResult();
     }
 }

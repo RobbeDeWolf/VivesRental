@@ -6,6 +6,7 @@ using System.Net.Http.Json;
 using System.Security.Principal;
 using System.Text;
 using System.Threading.Tasks;
+using Vives.Services.Model;
 using VivesRental.Enums;
 using VivesRental.Services.Model.Filters;
 using VivesRental.Services.Model.Requests;
@@ -48,34 +49,34 @@ namespace VivesRental.Sdk
             return article;
         }
 
-        public async Task<ArticleResult> CreateAsync(ArticleRequest request)
+        public async Task<ServiceResult<ArticleResult>> CreateAsync(ArticleRequest request)
         {
             var route = $"https://localhost:7236/api/Article/Create";
             var response = await _HttpClient.PostAsJsonAsync(route, request);
             response.EnsureSuccessStatusCode();
 
-            var article = await response.Content.ReadFromJsonAsync<ArticleResult>();
-            return article;
+            var result = await response.Content.ReadFromJsonAsync<ServiceResult<ArticleResult>>();
+            return result;
         }
 
-        public async Task<ArticleResult> Update(Guid id, ArticleStatus status)
+        public async Task<ServiceResult<ArticleResult>> Update(Guid id, ArticleStatus status)
         {
             var route = $"https://localhost:7236/api/Article/Edit/{id}";
             var response = await _HttpClient.PostAsJsonAsync(route, status);
             response.EnsureSuccessStatusCode();
 
-            var article = await response.Content.ReadFromJsonAsync<ArticleResult>();
-            return article;
+            var result = await response.Content.ReadFromJsonAsync<ServiceResult<ArticleResult>>();
+            return result;
         }
 
-        public async Task<Boolean> Delete(Guid id)
+        public async Task<ServiceResult> Delete(Guid id)
         {
             var route = $"https://localhost:7236/api/Article/Delete/{id}";
             var response = await _HttpClient.DeleteAsync(route);
             response.EnsureSuccessStatusCode();
 
-            var article = await response.Content.ReadFromJsonAsync<Boolean>();
-            return article;
+            var result = await response.Content.ReadFromJsonAsync<ServiceResult>();
+            return result;
         }
     }
 }

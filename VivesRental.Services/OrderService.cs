@@ -1,4 +1,5 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using Vives.Services.Model;
 using VivesRental.Model;
 using VivesRental.Repository.Core;
 using VivesRental.Services.Abstractions;
@@ -34,7 +35,7 @@ public class OrderService : IOrderService
             .ToListAsync();
     }
         
-    public async Task<OrderResult?> CreateAsync(Guid customerId)
+    public async Task<ServiceResult<OrderResult?>> CreateAsync(Guid customerId)
     {
         var customer = await _context.Customers
             .Where(c => c.Id == customerId)
@@ -59,12 +60,21 @@ public class OrderService : IOrderService
         var numberOfObjectsUpdated = await _context.SaveChangesAsync();
         if (numberOfObjectsUpdated > 0)
         {
-            return await GetAsync(order.Id);
+            var result = await GetAsync(order.Id);
+            return new ServiceResult<OrderResult?>(result);
         }
-        return null;
+        
+        var serviceResult = new ServiceResult<OrderResult>();
+        serviceResult.Messages.Add(new ServiceMessage
+        {
+            Code = "No changes",
+            Message = "nothing changed in database",
+            Type = ServiceMessageType.Error
+        });
+        return serviceResult;
     }
 
-    public async Task<bool> ReturnAsync(Guid orderId, DateTime returnedAt)
+    public async Task<ServiceResult> ReturnAsync(Guid orderId, DateTime returnedAt)
     {
         var orderLines = await _context.OrderLines
             .Where(ol => ol.OrderId == orderId && !ol.ReturnedAt.HasValue)
@@ -75,6 +85,18 @@ public class OrderService : IOrderService
         }
 
         var numberOfObjectsUpdated = await _context.SaveChangesAsync();
-        return numberOfObjectsUpdated > 0;
+        if (numberOfObjectsUpdated is 0)
+        {
+            var serviceResult = new ServiceResult();
+            serviceResult.Messages.Add(new ServiceMessage
+            {
+                Code = "NothingChanged",
+                Message = "no changes is database",
+                Type = ServiceMessageType.Error
+            });
+            return serviceResult;
+        }
+
+        return new ServiceResult();
     }
 }

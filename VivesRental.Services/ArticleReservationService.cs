@@ -1,4 +1,5 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using Vives.Services.Model;
 using VivesRental.Model;
 using VivesRental.Repository.Core;
 using VivesRental.Services.Abstractions;
@@ -34,7 +35,7 @@ public class ArticleReservationService : IArticleReservationService
             .ToListAsync();
     }
         
-    public async Task<ArticleReservationResult?> CreateAsync(ArticleReservationRequest request)
+    public async Task<ServiceResult<ArticleReservationResult?>> CreateAsync(ArticleReservationRequest request)
     {
         request.FromDateTime ??= DateTime.Now;
         request.UntilDateTime ??= DateTime.Now.AddMinutes(5);
@@ -50,8 +51,21 @@ public class ArticleReservationService : IArticleReservationService
         _context.ArticleReservations.Add(articleReservation);
 
         await _context.SaveChangesAsync();
-
-        return await GetAsync(articleReservation.Id);
+        var succes = await GetAsync(articleReservation.Id);
+        if (succes is null)
+        {
+            var serviceResult = new ServiceResult<ArticleReservationResult>();
+            serviceResult.Messages.Add( new ServiceMessage
+            {
+                Code = "Notcreated",
+                Message = "Didnt find the object after creation",
+                Type = ServiceMessageType.Error
+            });
+            return serviceResult;
+        }
+        
+        var succesServiceResult = new ServiceResult<ArticleReservationResult>(succes);
+        return succesServiceResult;
     }
 
     /// <summary>
@@ -59,14 +73,24 @@ public class ArticleReservationService : IArticleReservationService
     /// </summary>
     /// <param name="id">The id of the ArticleReservation</param>
     /// <returns>True if the article reservation was deleted</returns>
-    public async Task<bool> RemoveAsync(Guid id)
+    public async Task<ServiceResult> RemoveAsync(Guid id)
     {
+        var serviceResult = new ServiceResult();
         var articleReservation = new ArticleReservation { Id = id };
         _context.ArticleReservations.Attach(articleReservation);
         _context.ArticleReservations.Remove(articleReservation);
 
-        await _context.SaveChangesAsync();
+        var changes = await _context.SaveChangesAsync();
+        if (changes is 0)
+        {
+            serviceResult.Messages.Add(new ServiceMessage
+            {
+                Code = "NothingChanged",
+                Message = "Something happend... nothing changed in the database.",
+                Type = ServiceMessageType.Error
+            });
+        }
 
-        return true;
+        return serviceResult;
     }
 }

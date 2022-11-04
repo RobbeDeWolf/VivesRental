@@ -4,6 +4,7 @@ using System.Linq;
 using System.Net.Http.Json;
 using System.Text;
 using System.Threading.Tasks;
+using Vives.Services.Model;
 using VivesRental.Enums;
 using VivesRental.Services.Model.Filters;
 using VivesRental.Services.Model.Requests;
@@ -44,33 +45,33 @@ namespace VivesRental.Sdk
             return article;
         }
 
-        public async Task<CustomerResult> CreateAsync(CustomerRequest request)
+        public async Task<ServiceResult<CustomerResult>> CreateAsync(CustomerRequest request)
         {
             var route = "https://localhost:7236/api/Customer/Create";
             var response = await _HttpClient.PostAsJsonAsync(route, request);
             response.EnsureSuccessStatusCode();
 
-            var article = await response.Content.ReadFromJsonAsync<CustomerResult>();
+            var article = await response.Content.ReadFromJsonAsync<ServiceResult<CustomerResult>>();
             return article;
         }
 
-        public async Task<CustomerResult> Edit(Guid id, CustomerRequest status)
+        public async Task<ServiceResult<CustomerResult>> Edit(Guid id, CustomerRequest status)
         {
             var route = $"https://localhost:7236/api/Customer/Edit/{id}";
             var response = await _HttpClient.PostAsJsonAsync(route, status);
             response.EnsureSuccessStatusCode();
 
-            var article = await response.Content.ReadFromJsonAsync<CustomerResult>();
+            var article = await response.Content.ReadFromJsonAsync<ServiceResult<CustomerResult>>();
             return article;
         }
 
-        public async Task<Boolean> Delete(Guid id)
+        public async Task<ServiceResult> Delete(Guid id)
         {
             var route = $"https://localhost:7236/api/Customer/Delete/{id}";
             var response = await _HttpClient.DeleteAsync(route);
             response.EnsureSuccessStatusCode();
 
-            var article = await response.Content.ReadFromJsonAsync<Boolean>();
+            var article = await response.Content.ReadFromJsonAsync<ServiceResult>();
             return article;
         }
     }

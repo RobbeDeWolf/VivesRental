@@ -1,5 +1,6 @@
 ﻿using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
+using Vives.Services.Model;
 using VivesRental.Model;
 using VivesRental.Repository.Core;
 using VivesRental.Services.Abstractions;
@@ -37,7 +38,7 @@ public class ProductService : IProductService
             .ToListAsync();
     }
 
-    public async Task<ProductResult?> CreateAsync(ProductRequest entity)
+    public async Task<ServiceResult<ProductResult?>> CreateAsync(ProductRequest entity)
     {
         var product = new Product
         {
@@ -49,18 +50,37 @@ public class ProductService : IProductService
         };
 
         _context.Products.Add(product);
-        await _context.SaveChangesAsync();
-        return await GetAsync(product.Id);
+        var changes = await _context.SaveChangesAsync();
+        if (changes is 0)
+        {
+            var serviceResult = new ServiceResult<ProductResult>();
+            serviceResult.Messages.Add( new ServiceMessage
+            {
+                Code = "No changes",
+                Message = "No changes in database after create",
+                Type = ServiceMessageType.Error
+            });
+            return serviceResult;
+        }
+        var result = await GetAsync(product.Id);
+        return new ServiceResult<ProductResult?>(result);
     }
 
-    public async Task<ProductResult?> EditAsync(Guid id, ProductRequest entity)
+    public async Task<ServiceResult<ProductResult?>> EditAsync(Guid id, ProductRequest entity)
     {
         var product = await _context.Products
             .FirstOrDefaultAsync(p => p.Id == id);
 
         if (product == null)
         {
-            return null;
+            var serviceResult = new ServiceResult<ProductResult>();
+            serviceResult.Messages.Add( new ServiceMessage
+            {
+                Code = "invalidProduct",
+                Message = "Product is invalid",
+                Type = ServiceMessageType.Error
+            });
+            return serviceResult;
         }
             
         product.Name = entity.Name;
@@ -69,9 +89,21 @@ public class ProductService : IProductService
         product.Publisher = entity.Publisher;
         product.RentalExpiresAfterDays = entity.RentalExpiresAfterDays;
 
-        await _context.SaveChangesAsync();
+        var changes = await _context.SaveChangesAsync();
+        if (changes is 0)
+        {
+            var serviceResult = new ServiceResult<ProductResult>();
+            serviceResult.Messages.Add( new ServiceMessage
+            {
+                Code = "nothing changed",
+                Message = "Nothing changed in database",
+                Type = ServiceMessageType.Error
+            });
+            return serviceResult;
+        }
 
-        return await GetAsync(product.Id);
+        var result = await GetAsync(product.Id);
+        return new ServiceResult<ProductResult?>(result);
     }
 
     /// <summary>
@@ -79,12 +111,12 @@ public class ProductService : IProductService
     /// </summary>
     /// <param name="id">The id of the Product</param>
     /// <returns>True if the product was deleted</returns>
-    public async Task<bool> RemoveAsync(Guid id)
+    public async Task<ServiceResult> RemoveAsync(Guid id)
     {
         if (_context.Database.IsInMemory())
         {
             await RemoveInternalAsync(id);
-            return true;
+            return new ServiceResult();
         }
 
         await using var transaction = await _context.Database.BeginTransactionAsync();
@@ -93,7 +125,7 @@ public class ProductService : IProductService
         {
             await RemoveInternalAsync(id);
             await transaction.CommitAsync();
-            return true;
+            return new ServiceResult();
         }
         catch
         {
@@ -122,11 +154,18 @@ public class ProductService : IProductService
     /// This is limited to maximum 10.000
     /// </summary>
     /// <returns>True if articles are added</returns>
-    public async Task<bool> GenerateArticlesAsync(Guid productId, int amount)
+    public async Task<ServiceResult> GenerateArticlesAsync(Guid productId, int amount)
     {
         if (amount <= 0 || amount > 10000) //Set a limit to 10K
         {
-            return false;
+            var serviceResult = new ServiceResult();
+            serviceResult.Messages.Add( new ServiceMessage
+            {
+                Code = "InvalidAmount",
+                Message = "amount is invalid",
+                Type = ServiceMessageType.Error
+            });
+            return serviceResult;
         }
 
         for (int i = 0; i < amount; i++)
@@ -139,7 +178,20 @@ public class ProductService : IProductService
         }
 
         var numberOfObjectsUpdated = await _context.SaveChangesAsync();
-        return numberOfObjectsUpdated > 0;
+
+        if (numberOfObjectsUpdated is 0)
+        {
+            var serviceResult = new ServiceResult();
+            serviceResult.Messages.Add( new ServiceMessage
+            {
+                Code = "No changes",
+                Message = "no changes is database",
+                Type = ServiceMessageType.Error
+            });
+            return serviceResult;
+        }
+
+        return new ServiceResult();
     }
         
     private async Task ClearArticleByProductIdAsync(Guid productId)

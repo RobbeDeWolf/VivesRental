@@ -1,4 +1,5 @@
-﻿using VivesRental.Services.Model.Filters;
+﻿using Vives.Services.Model;
+using VivesRental.Services.Model.Filters;
 using VivesRental.Services.Model.Results;
 
 namespace VivesRental.Services.Abstractions;
@@ -9,6 +10,6 @@ public interface IOrderService
 
     Task<List<OrderResult>> FindAsync(OrderFilter? filter);
 
-    Task<OrderResult?> CreateAsync(Guid customerId);
-    Task<bool> ReturnAsync(Guid id, DateTime returnedAt);
+    Task<ServiceResult<OrderResult?>> CreateAsync(Guid customerId);
+    Task<ServiceResult> ReturnAsync(Guid id, DateTime returnedAt);
 }

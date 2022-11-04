@@ -12,6 +12,7 @@
 	</ItemGroup>
 
 	<ItemGroup>
+		<ProjectReference Include="..\Vives.Services.Model\Vives.Services.Model.csproj" />
 		<ProjectReference Include="..\VivesRental.Model.Extensions\VivesRental.Model.Extensions.csproj" />
 		<ProjectReference Include="..\VivesRental.Model\VivesRental.Model.csproj" />
 		<ProjectReference Include="..\VivesRental.Repository\VivesRental.Repository.csproj" />

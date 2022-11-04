@@ -1,5 +1,6 @@
 ﻿using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
+using Vives.Services.Model;
 using VivesRental.Model;
 using VivesRental.Repository.Core;
 using VivesRental.Services.Abstractions;
@@ -37,7 +38,7 @@ public class CustomerService : ICustomerService
             .ToListAsync();
     }
 
-    public async Task<CustomerResult?> CreateAsync(CustomerRequest entity)
+    public async Task<ServiceResult<CustomerResult?>> CreateAsync(CustomerRequest entity)
     {
         var customer = new Customer
         {
@@ -50,10 +51,23 @@ public class CustomerService : ICustomerService
         _context.Customers.Add(customer);
         await _context.SaveChangesAsync();
 
-        return await GetAsync(customer.Id);
+        var customerResult = await GetAsync(customer.Id);
+        if (customerResult is null)
+        {
+            var serviceResult = new ServiceResult<CustomerResult>();
+            serviceResult.Messages.Add(new ServiceMessage
+            {
+                Code = "NotfoundAfterCreation",
+                Message = "The customer was not found after creation",
+                Type = ServiceMessageType.Error
+            });
+            return serviceResult;
+        }
+        var succesServiceResult = new ServiceResult<CustomerResult>();
+        return succesServiceResult;
     }
 
-    public async Task<CustomerResult?> EditAsync(Guid id, CustomerRequest entity)
+    public async Task<ServiceResult<CustomerResult?>> EditAsync(Guid id, CustomerRequest entity)
     {
         //Get Product from unitOfWork
         var customer = await _context.Customers
@@ -61,7 +75,14 @@ public class CustomerService : ICustomerService
 
         if (customer == null)
         {
-            return null;
+            var serviceResult = new ServiceResult<CustomerResult>();
+            serviceResult.Messages.Add(new ServiceMessage
+            {
+                Code = "CustomerNotFound",
+                Message = "The customer was not found",
+                Type = ServiceMessageType.Error
+            });
+            return serviceResult;
         }
 
         //Only update the properties we want to update
@@ -72,7 +93,8 @@ public class CustomerService : ICustomerService
 
         await _context.SaveChangesAsync();
 
-        return await GetAsync(customer.Id);
+        var result = await GetAsync(customer.Id);
+        return new ServiceResult<CustomerResult?>(result);
     }
 
     /// <summary>
@@ -80,12 +102,12 @@ public class CustomerService : ICustomerService
     /// </summary>
     /// <param name="id">The id of the Customer</param>
     /// <returns>True if the customer was deleted</returns>
-    public async Task<bool> RemoveAsync(Guid id)
+    public async Task<ServiceResult> RemoveAsync(Guid id)
     {
         if (_context.Database.IsInMemory())
         {
             await RemoveInternalAsync(id);
-            return true;
+            return new ServiceResult();
         }
 
         await using var transaction = await _context.Database.BeginTransactionAsync();
@@ -94,7 +116,7 @@ public class CustomerService : ICustomerService
         {
             await RemoveInternalAsync(id);
             await transaction.CommitAsync();
-            return true;
+            return new ServiceResult();
         }
         catch
         {

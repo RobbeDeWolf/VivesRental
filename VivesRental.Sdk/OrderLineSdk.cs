@@ -4,6 +4,7 @@ using System.Linq;
 using System.Net.Http.Json;
 using System.Text;
 using System.Threading.Tasks;
+using Vives.Services.Model;
 using VivesRental.Services.Model.Filters;
 using VivesRental.Services.Model.Results;
 
@@ -42,33 +43,33 @@ namespace VivesRental.Sdk
             var article = await respons.Content.ReadFromJsonAsync<OrderLineResult>();
             return article;
         }
-        public async Task<Boolean> RentAsync(Guid orderid, Guid articleId)
+        public async Task<ServiceResult> RentAsync(Guid orderid, Guid articleId)
         {
             var route = $"https://localhost:7236/api/OrderLine/Rent?orderid={orderid}&articleId={articleId}";
             var respons = await _HttpClient.GetAsync(route);
             respons.EnsureSuccessStatusCode();
 
-            var article = await respons.Content.ReadFromJsonAsync<Boolean>();
+            var article = await respons.Content.ReadFromJsonAsync<ServiceResult>();
             return article;
         }
 
-        public async Task<Boolean> RentListAsync(Guid orderid, IList<Guid> articleIds)
+        public async Task<ServiceResult> RentListAsync(Guid orderid, IList<Guid> articleIds)
         {
             var route = $"https://localhost:7236/api/OrderLine/RentList?orderId={orderid}";
             var respons = await _HttpClient.PostAsJsonAsync(route, articleIds);
             respons.EnsureSuccessStatusCode();
 
-            var article = await respons.Content.ReadFromJsonAsync<Boolean>();
+            var article = await respons.Content.ReadFromJsonAsync<ServiceResult>();
             return article;
         }
 
-        public async Task<Boolean> Return(Guid orderlineId, DateTime returnedAt)
+        public async Task<ServiceResult> Return(Guid orderlineId, DateTime returnedAt)
         {
             var route = $"https://localhost:7236/api/Order/Return?orderId={orderlineId}&returnedAt={returnedAt}";
             var respons = await _HttpClient.GetAsync(route);
             respons.EnsureSuccessStatusCode();
 
-            var article = await respons.Content.ReadFromJsonAsync<Boolean>();
+            var article = await respons.Content.ReadFromJsonAsync<ServiceResult>();
             return article;
         }
     }

@@ -1,5 +1,6 @@
 ﻿using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
+using Vives.Services.Model;
 using VivesRental.Enums;
 using VivesRental.Model;
 using VivesRental.Repository.Core;
@@ -38,7 +39,7 @@ public class ArticleService : IArticleService
     }
         
         
-    public async Task<ArticleResult?> CreateAsync(ArticleRequest entity)
+    public async Task<ServiceResult<ArticleResult?>> CreateAsync(ArticleRequest entity)
     {
         var article = new Article
         {
@@ -50,10 +51,24 @@ public class ArticleService : IArticleService
 
         await _context.SaveChangesAsync();
 
-        return await GetAsync(article.Id);
+        var articleResult = await GetAsync(article.Id);
+
+        if (articleResult is null)
+        {
+            var serviceResult = new ServiceResult<ArticleResult>();
+            serviceResult.Messages.Add(new ServiceMessage
+            {
+                Code = "NotfoundAfterCreation",
+                Message = "The article was not found after creation",
+                Type = ServiceMessageType.Error
+            });
+            return serviceResult;
+        }
+        var succesServiceResult = new ServiceResult<ArticleResult>();
+        return succesServiceResult;
     }
 
-    public async Task<bool> UpdateStatusAsync(Guid articleId, ArticleStatus status)
+    public async Task<ServiceResult> UpdateStatusAsync(Guid articleId, ArticleStatus status)
     {
         //Get Product from unitOfWork
         var article = await _context.Articles
@@ -62,14 +77,21 @@ public class ArticleService : IArticleService
 
         if (article == null)
         {
-            return false;
+            var serviceresult = new ServiceResult();
+            serviceresult.Messages.Add(new ServiceMessage
+            {
+                Code = "ArticleNotFound",
+                Message = "Article not found, returned null",
+                Type = ServiceMessageType.Error
+            });
+            return serviceresult;
         }
 
         //Only update the properties we want to update
         article.Status = status;
 
         await _context.SaveChangesAsync();
-        return true;
+        return new ServiceResult();
     }
 
     /// <summary>
@@ -77,12 +99,12 @@ public class ArticleService : IArticleService
     /// </summary>
     /// <param name="id">The id of the Article</param>
     /// <returns>True if the article was deleted</returns>
-    public async Task<bool> RemoveAsync(Guid id)
+    public async Task<ServiceResult> RemoveAsync(Guid id)
     {
         if (_context.Database.IsInMemory())
         {
             await RemoveInternalAsync(id);
-            return true;
+            return new ServiceResult();
         }
 
         await using var transaction = await _context.Database.BeginTransactionAsync();
@@ -91,7 +113,7 @@ public class ArticleService : IArticleService
         {
             await RemoveInternalAsync(id);
             await transaction.CommitAsync();
-            return true;
+            return new ServiceResult();
         }
         catch
         {
